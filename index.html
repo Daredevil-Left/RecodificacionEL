@@ -226,12 +226,14 @@
                 tableHead.innerHTML = ''; // Limpiar
                 const headerRow = document.createElement('tr');
                 
-                // Añadir encabezado para la columna de Sujeto
-                const thSubject = document.createElement('th');
-                thSubject.scope = 'col';
-                thSubject.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-                thSubject.textContent = 'Sujeto';
-                headerRow.appendChild(thSubject);
+                // Añadir encabezado para la columna de Sujeto (solo si hay datos)
+                if (state.data.length > 0) {
+                    const thSubject = document.createElement('th');
+                    thSubject.scope = 'col';
+                    thSubject.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    thSubject.textContent = 'Sujeto';
+                    headerRow.appendChild(thSubject);
+                }
 
                 // Columnas dinámicas de preguntas
                 for (let colIndex = 0; colIndex < columnCount; colIndex++) {
@@ -257,33 +259,45 @@
 
                 // 3. Renderizar Cuerpo (Tbody)
                 tableBody.innerHTML = ''; // Limpiar
-                state.data.forEach((row, rowIndex) => {
-                    const tr = document.createElement('tr');
-                    tr.className = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                    
-                    // Añadir celda para el número de persona
-                    const tdSubject = document.createElement('td');
-                    tdSubject.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
-                    tdSubject.textContent = `Persona ${rowIndex + 1}`;
-                    tr.appendChild(tdSubject);
 
-                    // Columnas de datos (inputs)
-                    row.forEach((cell, colIndex) => {
-                        const td = document.createElement('td');
-                        td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
-                        td.innerHTML = `
-                            <input type="number" 
-                                   class="likert-input"
-                                   value="${cell ?? ''}"
-                                   data-row-index="${rowIndex}"
-                                   data-col-index="${colIndex}"
-                                   min="${scaleMinInput.value}"
-                                   max="${scaleMaxInput.value}">
-                        `;
-                        tr.appendChild(td);
-                    });
+                if (state.data.length === 0) {
+                    // Mostrar mensaje cuando no hay datos
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.colSpan = columnCount + 1; // +1 por la columna Sujeto
+                    td.className = 'text-center text-gray-500 py-10';
+                    td.textContent = 'Aún no hay datos. Carga un archivo o añade filas/columnas para empezar.';
+                    tr.appendChild(td);
                     tableBody.appendChild(tr);
-                });
+                } else {
+                    state.data.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.className = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                        // Añadir celda para el número de persona
+                        const tdSubject = document.createElement('td');
+                        tdSubject.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
+                        tdSubject.textContent = `Persona ${rowIndex + 1}`;
+                        tr.appendChild(tdSubject);
+
+                        // Columnas de datos (inputs)
+                        row.forEach((cell, colIndex) => {
+                            const td = document.createElement('td');
+                            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                            td.innerHTML = `
+                                <input type="number"
+                                       class="likert-input"
+                                       value="${cell ?? ''}"
+                                       data-row-index="${rowIndex}"
+                                       data-col-index="${colIndex}"
+                                       min="${scaleMinInput.value}"
+                                       max="${scaleMaxInput.value}">
+                            `;
+                            tr.appendChild(td);
+                        });
+                        tableBody.appendChild(tr);
+                    });
+                }
             }
 
             /**
@@ -461,13 +475,24 @@
 
             // 1. Añadir Fila
             addRowBtn.addEventListener('click', () => {
-                const numCols = state.columnSettings.length || (state.data[0] ? state.data[0].length : 0);
+                let numCols = state.columnSettings.length;
+
+                // Si no hay columnas, añade una por defecto para poder añadir una fila
                 if (numCols === 0) {
-                    showToast('Carga datos o añade una columna primero.', true);
-                    return;
+                    state.columnSettings.push(false);
+                    numCols = 1;
                 }
+
                 const newRow = new Array(numCols).fill(null);
                 state.data.push(newRow);
+
+                // Asegurarse de que todas las filas existentes tengan el número correcto de columnas
+                state.data.forEach(row => {
+                    while (row.length < numCols) {
+                        row.push(null);
+                    }
+                });
+
                 renderOriginalTable(); // Re-renderizar todo
             });
 
