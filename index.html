@@ -15,7 +15,6 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f4f7f6; /* Un gris muy claro */
         }
         /* Estilos para los inputs de la tabla */
         .likert-input {
@@ -64,22 +63,22 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased bg-gray-100">
 
     <div class="container max-w-7xl mx-auto p-4 sm:p-8">
         
         <!-- Encabezado -->
-        <header class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-800">Herramienta de Recodificación Likert</h1>
-            <p class="text-lg text-gray-600 mt-2">
+        <header class="mb-10 text-center">
+            <h1 class="text-5xl font-extrabold text-gray-800">Herramienta de Recodificación Likert</h1>
+            <p class="text-lg text-gray-600 mt-3 max-w-2xl mx-auto">
                 Introduce tus datos, define qué columnas son negativas y genera los resultados recodificados al instante.
             </p>
         </header>
 
         <!-- Panel de Configuración y Acciones -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
             <!-- Card de Configuración de Escala -->
-            <div class="bg-white p-6 rounded-xl shadow-lg">
+            <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">1. Configuración de Escala</h3>
                 <div class="flex items-center space-x-4">
                     <div class="flex-1">
@@ -94,12 +93,12 @@
             </div>
 
             <!-- Card de Acciones de Hoja -->
-            <div class="bg-white p-6 rounded-xl shadow-lg">
+            <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">2. Acciones de Hoja</h3>
                 <!-- Cambiado de flex a grid para acomodar el nuevo botón -->
                 <div class="grid grid-cols-1 gap-3">
                     <!-- Nuevo Botón de Carga de Archivo -->
-                    <label for="file-input" class="cursor-pointer text-center w-full bg-purple-100 text-purple-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-purple-200 transition-colors">
+                    <label for="file-input" class="cursor-pointer text-center w-full bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-blue-200 transition-colors">
                         Cargar Datos (CSV, XLSX)
                     </label>
                     <input type="file" id="file-input" class="hidden" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
@@ -108,14 +107,14 @@
                     <button id="add-row-btn" class="w-full bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-blue-200 transition-colors">
                         Añadir Fila (Sujeto)
                     </button>
-                    <button id="add-col-btn" class="w-full bg-green-100 text-green-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-green-200 transition-colors">
+                    <button id="add-col-btn" class="w-full bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-blue-200 transition-colors">
                         Añadir Columna (Ítem)
                     </button>
                 </div>
             </div>
 
             <!-- Card de Acción Principal -->
-            <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col justify-center">
                 <h3 class="text-xl font-semibold text-gray-900 mb-4">3. Generar Resultados</h3>
                 <button id="recode-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105">
                     ¡Recodificar Ahora!
@@ -124,7 +123,7 @@
         </div>
 
         <!-- Sección de Datos Originales -->
-        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg mb-8">
+        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mb-8">
             <h2 class="text-2xl font-semibold text-gray-900 mb-5">
                 Datos Originales
             </h2>
@@ -141,7 +140,7 @@
         </div>
 
         <!-- Sección de Datos Recodificados (Inicialmente oculta) -->
-        <div id="recoded-data-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg hidden">
+        <div id="recoded-data-container" class="bg-white p-6 sm:p-8 rounded-lg shadow-md hidden">
             <div class="flex justify-between items-center mb-5">
                 <h2 class="text-2xl font-semibold text-gray-900">
                     Datos Recodificados
@@ -149,7 +148,7 @@
                 <!-- Contenedor para botones de acción -->
                 <div class="flex items-center space-x-4">
                     <!-- NUEVO BOTÓN DE DESCARGA -->
-                    <button id="download-recoded-btn" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-green-700 transition-colors text-sm">
+                    <button id="download-recoded-btn" class="bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-blue-200 transition-colors text-sm">
                         Exportar (.xlsx)
                     </button>
                     <!-- Botón de Cierre -->
