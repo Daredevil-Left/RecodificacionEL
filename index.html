@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recodificador de Escala Likert</title>
+    <!-- Incluye Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluye SheetJS (para leer XLSX) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Fuente Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6; /* Un gris muy claro */
+        }
+        /* Estilos para los inputs de la tabla */
+        .likert-input {
+            width: 100%;
+            padding: 8px 4px;
+            text-align: center;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+        }
+        .likert-input:focus {
+            border-color: #2563eb; /* Azul de Tailwind */
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            outline: none;
+        }
+        .likert-input:hover {
+            border-color: #d1d5db; /* Gris de Tailwind */
+        }
+        /* Estilo para el toggle/checkbox */
+        .toggle-checkbox:checked {
+            background-color: #2563eb;
+        }
+        .toggle-checkbox {
+            appearance: none;
+            width: 40px;
+            height: 20px;
+            background-color: #d1d5db;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .toggle-checkbox::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease-in-out;
+        }
+        .toggle-checkbox:checked::before {
+            transform: translateX(20px);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container max-w-7xl mx-auto p-4 sm:p-8">
+        
+        <!-- Encabezado -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Herramienta de Recodificación Likert</h1>
+            <p class="text-lg text-gray-600 mt-2">
+                Introduce tus datos, define qué columnas son negativas y genera los resultados recodificados al instante.
+            </p>
+        </header>
+
+        <!-- Panel de Configuración y Acciones -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Card de Configuración de Escala -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">1. Configuración de Escala</h3>
+                <div class="flex items-center space-x-4">
+                    <div class="flex-1">
+                        <label for="scale-min" class="block text-sm font-medium text-gray-700">Valor Mínimo</label>
+                        <input type="number" id="scale-min" value="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                    </div>
+                    <div class="flex-1">
+                        <label for="scale-max" class="block text-sm font-medium text-gray-700">Valor Máximo</label>
+                        <input type="number" id="scale-max" value="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card de Acciones de Hoja -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">2. Acciones de Hoja</h3>
+                <!-- Cambiado de flex a grid para acomodar el nuevo botón -->
+                <div class="grid grid-cols-1 gap-3">
+                    <!-- Nuevo Botón de Carga de Archivo -->
+                    <label for="file-input" class="cursor-pointer text-center w-full bg-purple-100 text-purple-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-purple-200 transition-colors">
+                        Cargar Datos (CSV, XLSX)
+                    </label>
+                    <input type="file" id="file-input" class="hidden" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+
+                    <!-- Botones Existentes -->
+                    <button id="add-row-btn" class="w-full bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-blue-200 transition-colors">
+                        Añadir Fila (Sujeto)
+                    </button>
+                    <button id="add-col-btn" class="w-full bg-green-100 text-green-800 font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-green-200 transition-colors">
+                        Añadir Columna (Ítem)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card de Acción Principal -->
+            <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col justify-center">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">3. Generar Resultados</h3>
+                <button id="recode-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105">
+                    ¡Recodificar Ahora!
+                </button>
+            </div>
+        </div>
+
+        <!-- Sección de Datos Originales -->
+        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-5">
+                Datos Originales
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200" id="original-table">
+                    <thead class="bg-gray-50" id="original-table-head">
+                        <!-- Los encabezados se generan con JS -->
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="original-table-body">
+                        <!-- Las filas de datos se generan con JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sección de Datos Recodificados (Inicialmente oculta) -->
+        <div id="recoded-data-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl font-semibold text-gray-900">
+                    Datos Recodificados
+                </h2>
+                <!-- Contenedor para botones de acción -->
+                <div class="flex items-center space-x-4">
+                    <!-- NUEVO BOTÓN DE DESCARGA -->
+                    <button id="download-recoded-btn" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-green-700 transition-colors text-sm">
+                        Exportar (.xlsx)
+                    </button>
+                    <!-- Botón de Cierre -->
+                    <button id="close-recoded-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200" id="recoded-table">
+                    <thead class="bg-gray-50" id="recoded-table-head">
+                        <!-- Encabezados de resultados -->
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="recoded-table-body">
+                        <!-- Filas de resultados -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificación Toast (Nueva) -->
+    <div id="toast-notification" class="fixed top-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-lg z-50 hidden opacity-0 transition-all duration-300">
+        <!-- El mensaje se insertará aquí -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- ESTADO INICIAL ---
+            // Simplificado para una cuadrícula de datos pura
+            const state = {
+                // Datos de la cuadrícula (Array de Arrays)
+                data: [],
+                // Configuración de columnas (Array de Booleans)
+                columnSettings: [],
+            };
+
+            // Variable global para guardar los últimos datos recodificados
+            let lastRecodedData = [];
+
+            // --- REFERENCIAS AL DOM ---
+            const tableHead = document.getElementById('original-table-head');
+            const tableBody = document.getElementById('original-table-body');
+            
+            const addRowBtn = document.getElementById('add-row-btn');
+            const addColBtn = document.getElementById('add-col-btn');
+            const recodeBtn = document.getElementById('recode-btn');
+            
+            const scaleMinInput = document.getElementById('scale-min');
+            const scaleMaxInput = document.getElementById('scale-max');
+            
+            const recodedContainer = document.getElementById('recoded-data-container');
+            const recodedTableHead = document.getElementById('recoded-table-head');
+            const recodedTableBody = document.getElementById('recoded-table-body');
+            const closeRecodedBtn = document.getElementById('close-recoded-btn');
+            
+            // Nuevas referencias
+            const fileInput = document.getElementById('file-input');
+            const toast = document.getElementById('toast-notification');
+            const downloadRecodedBtn = document.getElementById('download-recoded-btn'); // Nueva referencia
+
+            // --- FUNCIONES DE RENDERIZADO ---
+
+            /**
+             * Renderiza toda la tabla de datos originales (encabezados y cuerpo)
+             */
+            function renderOriginalTable() {
+                // 1. Obtener número de columnas
+                const columnCount = state.columnSettings.length;
+                
+                // 2. Renderizar Encabezado (Thead)
+                tableHead.innerHTML = ''; // Limpiar
+                const headerRow = document.createElement('tr');
+                
+                // Columnas dinámicas de preguntas
+                for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+                    const isNegative = state.columnSettings[colIndex];
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+                    th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    th.innerHTML = `
+                        <div class="flex flex-col items-center space-y-2">
+                            <span class="font-bold">Col ${colIndex + 1}</span>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <span class="text-xs font-medium ${isNegative ? 'text-blue-600' : 'text-gray-500'}">Recodificar (Neg)</span>
+                                <input type="checkbox" 
+                                       class="toggle-checkbox" 
+                                       data-col-index="${colIndex}" 
+                                       ${isNegative ? 'checked' : ''}>
+                            </label>
+                        </div>
+                    `;
+                    headerRow.appendChild(th);
+                }
+                tableHead.appendChild(headerRow);
+
+                // 3. Renderizar Cuerpo (Tbody)
+                tableBody.innerHTML = ''; // Limpiar
+                state.data.forEach((row, rowIndex) => {
+                    const tr = document.createElement('tr');
+                    tr.className = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                    
+                    // Columnas de datos (inputs)
+                    row.forEach((cell, colIndex) => {
+                        const td = document.createElement('td');
+                        td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                        td.innerHTML = `
+                            <input type="number" 
+                                   class="likert-input"
+                                   value="${cell ?? ''}"
+                                   data-row-index="${rowIndex}"
+                                   data-col-index="${colIndex}"
+                                   min="${scaleMinInput.value}"
+                                   max="${scaleMaxInput.value}">
+                        `;
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            /**
+             * Renderiza la tabla de resultados recodificados
+             */
+            function renderRecodedTable(recodedData) {
+                const columnCount = state.columnSettings.length;
+
+                // 1. Renderizar Encabezado
+                recodedTableHead.innerHTML = '';
+                let headerHTML = '';
+                for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+                    const isRecoded = state.columnSettings[colIndex];
+                    headerHTML += `
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${isRecoded ? 'text-blue-600 bg-blue-50' : ''}">
+                            Col ${colIndex + 1} ${isRecoded ? '(Recod.)' : ''}
+                        </th>
+                    `;
+                }
+                recodedTableHead.innerHTML = `<tr>${headerHTML}</tr>`;
+
+                // 2. Renderizar Cuerpo
+                recodedTableBody.innerHTML = '';
+                recodedData.forEach((row, rowIndex) => {
+                    let rowHTML = `<tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">`;
+                    
+                    row.forEach((cell, colIndex) => {
+                        const isRecoded = state.columnSettings[colIndex];
+                        rowHTML += `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center font-medium ${isRecoded ? 'text-blue-700 bg-blue-50' : 'text-gray-700'}">
+                                ${cell ?? 'N/A'}
+                            </td>
+                        `;
+                    });
+                    rowHTML += `</tr>`;
+                    recodedTableBody.innerHTML += rowHTML;
+                });
+
+                // 3. Mostrar la tabla
+                recodedContainer.classList.remove('hidden');
+                // Scroll para verla
+                recodedContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            // --- NUEVA FUNCIÓN: NOTIFICACIÓN TOAST ---
+            
+            /**
+             * Muestra una notificación toast
+             */
+            let toastTimer; // Para evitar que se pisen los timeouts
+            function showToast(message, isError = false) {
+                if (toastTimer) {
+                    clearTimeout(toastTimer);
+                }
+                toast.textContent = message;
+                // Limpiar clases de estado anteriores
+                toast.classList.remove('hidden', 'opacity-0', 'bg-green-500', 'bg-red-500');
+                
+                if (isError) {
+                    toast.classList.add('bg-red-500');
+                } else {
+                    toast.classList.add('bg-green-500');
+                }
+                
+                // Forzar fade in
+                requestAnimationFrame(() => {
+                    toast.classList.remove('opacity-0');
+                });
+
+                toastTimer = setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                    // Esperar que termine la transición para ocultarlo
+                    setTimeout(() => toast.classList.add('hidden'), 300);
+                }, 3000);
+            }
+
+            // --- NUEVA FUNCIÓN: PROCESADOR DE DATOS ---
+            
+            /**
+             * Procesa el array de arrays (de CSV o XLSX) y actualiza el estado
+             */
+            function processRawData(rawData) {
+                try {
+                    if (!rawData || rawData.length === 0) {
+                        throw new Error('El archivo está vacío o no tiene datos.');
+                    }
+
+                    // Convertir todos los datos a números (float) o null
+                    state.data = rawData.map(row => 
+                        row.map(cell => {
+                            if (cell === null || cell === undefined || String(cell).trim() === "") {
+                                return null;
+                            }
+                            const num = parseFloat(cell);
+                            return isNaN(num) ? null : num; // Guardar null si no es un número
+                        })
+                    );
+
+                    // Inferir el número de columnas del primer registro
+                    const numCols = state.data[0] ? state.data[0].length : 0;
+                    if (numCols === 0) {
+                        throw new Error('No se pudieron detectar columnas de datos.');
+                    }
+
+                    // Inicializar la configuración de columnas
+                    state.columnSettings = new Array(numCols).fill(false);
+
+                    // 4. Re-renderizar y notificar
+                    renderOriginalTable();
+                    showToast('Datos cargados correctamente.');
+
+                } catch (error) {
+                    console.error('Error al procesar datos:', error);
+                    showToast(`Error: ${error.message}`, true);
+                }
+            }
+
+
+            // --- MANEJADORES DE EVENTOS ---
+
+            // 0. Cargar Archivo CSV o XLSX (Modificado)
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    return;
+                }
+                
+                const reader = new FileReader();
+                const fileExtension = file.name.toLowerCase().split('.').pop();
+
+                if (fileExtension === 'xlsx') {
+                    // --- MANEJO DE XLSX ---
+                    reader.onload = (event) => {
+                        try {
+                            const data = new Uint8Array(event.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            // Usar 'header: 1' para obtener un array de arrays, sin asumir encabezados
+                            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            processRawData(rawData);
+                        } catch (error) {
+                            showToast('Error al procesar el archivo XLSX.', true);
+                            console.error(error);
+                        }
+                        e.target.value = ''; // Reset input
+                    };
+                    reader.onerror = () => showToast('Error al leer el archivo.', true);
+                    reader.readAsArrayBuffer(file); // Leer como ArrayBuffer para XLSX
+
+                } else if (fileExtension === 'csv') {
+                    // --- MANEJO DE CSV ---
+                    reader.onload = (event) => {
+                        try {
+                            const text = event.target.result;
+                            const rawData = text.trim().split(/\r?\n/).map(line => line.split(','));
+                            processRawData(rawData);
+                        } catch (error) {
+                            showToast('Error al procesar el archivo CSV.', true);
+                            console.error(error);
+                        }
+                        e.target.value = ''; // Reset input
+                    };
+                    reader.onerror = () => showToast('Error al leer el archivo.', true);
+                    reader.readAsText(file); // Leer como Texto para CSV
+
+                } else {
+                    showToast('Formato de archivo no soportado. Use .xlsx o .csv', true);
+                    e.target.value = ''; // Reset input
+                }
+            });
+
+            // 1. Añadir Fila
+            addRowBtn.addEventListener('click', () => {
+                const numCols = state.columnSettings.length || (state.data[0] ? state.data[0].length : 0);
+                if (numCols === 0) {
+                    showToast('Carga datos o añade una columna primero.', true);
+                    return;
+                }
+                const newRow = new Array(numCols).fill(null);
+                state.data.push(newRow);
+                renderOriginalTable(); // Re-renderizar todo
+            });
+
+            // 2. Añadir Columna
+            addColBtn.addEventListener('click', () => {
+                // Añadir a la configuración de columnas
+                state.columnSettings.push(false); // Por defecto no se recodifica
+                
+                // Añadir a todas las filas existentes
+                state.data.forEach(row => {
+                    row.push(null);
+                });
+
+                // Si la tabla está vacía, añadir una fila inicial
+                if (state.data.length === 0) {
+                    state.data.push(new Array(state.columnSettings.length).fill(null));
+                }
+                
+                renderOriginalTable(); // Re-renderizar todo
+            });
+
+            // 3. Actualizar datos en la tabla (Usando delegación de eventos)
+            tableBody.addEventListener('input', (e) => {
+                if (e.target.classList.contains('likert-input')) {
+                    const rowIndex = e.target.dataset.rowIndex;
+                    const colIndex = e.target.dataset.colIndex;
+                    const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                    
+                    if (rowIndex && colIndex) {
+                        state.data[rowIndex][colIndex] = isNaN(value) ? null : value;
+                    }
+                }
+            });
+
+            // 4. Actualizar toggles de recodificación (Delegación)
+            tableHead.addEventListener('change', (e) => {
+                if (e.target.classList.contains('toggle-checkbox')) {
+                    const colIndex = e.target.dataset.colIndex;
+                    if (colIndex) {
+                        state.columnSettings[colIndex] = e.target.checked;
+                        renderOriginalTable(); // Re-renderizar para actualizar el estilo del label
+                    }
+                }
+            });
+
+            // 5. Botón Principal: Recodificar
+            recodeBtn.addEventListener('click', () => {
+                const min = parseInt(scaleMinInput.value, 10);
+                const max = parseInt(scaleMaxInput.value, 10);
+
+                if (isNaN(min) || isNaN(max) || min >= max) {
+                    // Usar el nuevo toast en lugar de alert
+                    showToast('Rango de escala inválido (Ej: Mín 1, Máx 5).', true);
+                    return;
+                }
+
+                // Constante para la fórmula de recodificación: (Min + Max)
+                const recodeConst = min + max;
+
+                const recodedData = state.data.map(row => {
+                    const newRow = [];
+                    
+                    row.forEach((originalValue, colIndex) => {
+                        // Si no hay valor, se queda como N/A (null)
+                        if (originalValue === null || originalValue === undefined) {
+                            newRow.push(null);
+                            return;
+                        }
+
+                        // Aplicar la lógica
+                        if (state.columnSettings[colIndex]) {
+                            // Es una columna negativa -> Recodificar
+                            // Fórmula: (Min + Max) - ValorOriginal
+                            newRow.push(recodeConst - originalValue);
+                        } else {
+                            // Es una columna positiva -> Mantener valor
+                            newRow.push(originalValue);
+                        }
+                    });
+                    
+                    return newRow;
+                });
+
+                // GUARDAR LOS DATOS para la descarga
+                lastRecodedData = recodedData;
+
+                // Renderizar la tabla de resultados
+                renderRecodedTable(recodedData);
+            });
+
+            // 6. Cerrar tabla de resultados
+            closeRecodedBtn.addEventListener('click', () => {
+                recodedContainer.classList.add('hidden');
+            });
+
+            // 7. Descargar resultados (NUEVO)
+            downloadRecodedBtn.addEventListener('click', () => {
+                if (lastRecodedData.length === 0) {
+                    showToast('No hay datos recodificados para exportar.', true);
+                    return;
+                }
+
+                try {
+                    // 1. Crear encabezados (Col 1, Col 2 (Recod.), etc.)
+                    const columnCount = lastRecodedData[0].length;
+                    const headers = [];
+                    for (let i = 0; i < columnCount; i++) {
+                        const isRecoded = state.columnSettings[i];
+                        headers.push(`Col ${i + 1}${isRecoded ? ' (Recod.)' : ''}`);
+                    }
+
+                    // 2. Combinar encabezados con los datos
+                    // (Los datos ya están como array de arrays)
+                    const dataToExport = [headers, ...lastRecodedData];
+
+                    // 3. Crear la hoja de cálculo (worksheet)
+                    const ws = XLSX.utils.aoa_to_sheet(dataToExport);
+
+                    // 4. Crear el libro de trabajo (workbook)
+                    const wb = XLSX.utils.book_new();
+
+                    // 5. Añadir la hoja al libro
+                    XLSX.utils.book_append_sheet(wb, ws, 'DatosRecodificados');
+
+                    // 6. Escribir y descargar el archivo
+                    XLSX.writeFile(wb, 'datos_recodificados.xlsx');
+
+                    showToast('Resultados exportados a .xlsx');
+
+                } catch (error) {
+                    console.error('Error al exportar a XLSX:', error);
+                    showToast('Error al exportar el archivo.', true);
+                }
+            });
+
+            // --- INICIALIZACIÓN ---
+            renderOriginalTable();
+        });
+    </script>
+
+</body>
+</html>
